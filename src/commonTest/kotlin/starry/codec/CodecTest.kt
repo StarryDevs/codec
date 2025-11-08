@@ -3,7 +3,7 @@ package starry.codec
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class PrimitiveCodecTest {
+class CodecTest {
 
     @Test
     fun testLong() {

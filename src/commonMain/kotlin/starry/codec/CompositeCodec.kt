@@ -1,10 +1,10 @@
 package starry.codec
 
-private class ComposeCodec<T>(private val composeCodecDsl: ComposeCodecDslImpl<T>) : Codec<T> {
+private class CompositeCodec<T>(private val compositeCodecDsl: CompositeCodecDslImpl<T>) : Codec<T> {
     override fun decode(input: InputSource): T {
-        val originValues = composeCodecDsl.inputValues
-        val newValues = mutableMapOf<ComposeCodecDsl.Dependency<*>, Any?>()
-        for (dependency in composeCodecDsl.dependencies) {
+        val originValues = compositeCodecDsl.inputValues
+        val newValues = mutableMapOf<CompositeCodecDsl.Dependency<*>, Any?>()
+        for (dependency in compositeCodecDsl.dependencies) {
             try {
                 val value = dependency.codec.decode(input)
                 newValues[dependency] = value
@@ -12,19 +12,19 @@ private class ComposeCodec<T>(private val composeCodecDsl: ComposeCodecDslImpl<T
                 throw IllegalStateException("Failed to decode dependency $dependency", e)
             }
         }
-        composeCodecDsl.inputValues = newValues
-        val result = composeCodecDsl.output()
-        composeCodecDsl.inputValues = originValues
+        compositeCodecDsl.inputValues = newValues
+        val result = compositeCodecDsl.output()
+        compositeCodecDsl.inputValues = originValues
         return result
     }
 
     @Suppress("UNCHECKED_CAST")
     override fun encode(output: OutputTarget, value: T) {
-        val originValues = composeCodecDsl.outputValues
-        composeCodecDsl.outputValues = mutableMapOf()
-        composeCodecDsl.input(value)
-        for (dependency in composeCodecDsl.dependencies) {
-            val outputValue = composeCodecDsl.outputValues[dependency]
+        val originValues = compositeCodecDsl.outputValues
+        compositeCodecDsl.outputValues = mutableMapOf()
+        compositeCodecDsl.input(value)
+        for (dependency in compositeCodecDsl.dependencies) {
+            val outputValue = compositeCodecDsl.outputValues[dependency]
             if (outputValue == null) {
                 if (dependency.codec is DefaultCodec<*>) {
                     dependency.codec.encodeDefault(output)
@@ -32,14 +32,14 @@ private class ComposeCodec<T>(private val composeCodecDsl: ComposeCodecDslImpl<T
                     throw IllegalStateException("Output value for dependency $dependency is null")
                 }
             } else {
-                (dependency as ComposeCodecDslImpl<T>.Dependency<Any?>).codec.encode(output, outputValue)
+                (dependency as CompositeCodecDslImpl<T>.Dependency<Any?>).codec.encode(output, outputValue)
             }
         }
-        composeCodecDsl.outputValues = originValues
+        compositeCodecDsl.outputValues = originValues
     }
 }
 
-interface ComposeCodecDsl<T> {
+interface CompositeCodecDsl<T> {
     interface Dependency<K> {
         operator fun getValue(thisRef: Any?, property: kotlin.reflect.KProperty<*>): K
         operator fun setValue(thisRef: Any?, property: kotlin.reflect.KProperty<*>, value: K)
@@ -51,8 +51,8 @@ interface ComposeCodecDsl<T> {
     operator fun <K> Codec<K>.unaryPlus(): Dependency<K>
 }
 
-private class ComposeCodecDslImpl<T> : ComposeCodecDsl<T> {
-    inner class Dependency<K>(val codec: Codec<K>) : ComposeCodecDsl.Dependency<K> {
+private class CompositeCodecDslImpl<T> : CompositeCodecDsl<T> {
+    inner class Dependency<K>(val codec: Codec<K>) : CompositeCodecDsl.Dependency<K> {
         @Suppress("UNCHECKED_CAST")
         override operator fun getValue(thisRef: Any?, property: kotlin.reflect.KProperty<*>): K =
             inputValues[this] as K
@@ -64,8 +64,8 @@ private class ComposeCodecDslImpl<T> : ComposeCodecDsl<T> {
     }
 
     var dependencies = mutableListOf<Dependency<*>>()
-    var inputValues: Map<ComposeCodecDsl.Dependency<*>, Any?> = emptyMap()
-    var outputValues: MutableMap<ComposeCodecDsl.Dependency<*>, Any?> = mutableMapOf()
+    var inputValues: Map<CompositeCodecDsl.Dependency<*>, Any?> = emptyMap()
+    var outputValues: MutableMap<CompositeCodecDsl.Dependency<*>, Any?> = mutableMapOf()
 
     lateinit var output: () -> T
     lateinit var input: (T) -> Unit
@@ -81,8 +81,8 @@ private class ComposeCodecDslImpl<T> : ComposeCodecDsl<T> {
     override operator fun <K> Codec<K>.unaryPlus(): Dependency<K> = Dependency(this).also(dependencies::add)
 }
 
-fun <T> compose(block: ComposeCodecDsl<T>.() -> Unit): Codec<T> {
-    val dsl = ComposeCodecDslImpl<T>()
+fun <T> composite(block: CompositeCodecDsl<T>.() -> Unit): Codec<T> {
+    val dsl = CompositeCodecDslImpl<T>()
     dsl.block()
-    return ComposeCodec(dsl)
+    return CompositeCodec(dsl)
 }

@@ -1,6 +1,460 @@
 package starry.codec
 
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateRange
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
 import kotlin.enums.enumEntries
+import kotlin.time.Duration
+import kotlin.time.DurationUnit
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
+import kotlin.time.toDuration
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
+
+
+object IntCodec : Codec<Int> {
+    override fun decode(input: InputSource): Int {
+        var result = 0
+        for (i in 0 until 4) {
+            result = (result shl 8) or (input.next().toInt() and 0xFF)
+        }
+        return result
+    }
+
+    override fun encode(output: OutputTarget, value: Int) {
+        for (i in 3 downTo 0) {
+            output.write(((value shr (i * 8)) and 0xFF).toByte())
+        }
+    }
+}
+
+object ByteCodec : Codec<Byte> {
+    override fun decode(input: InputSource): Byte {
+        return input.next()
+    }
+
+    override fun encode(output: OutputTarget, value: Byte) {
+        output.write(value)
+    }
+}
+
+object ShortCodec : Codec<Short> {
+    override fun decode(input: InputSource): Short {
+        var result = 0
+        for (i in 0 until 2) {
+            result = (result shl 8) or (input.next().toInt() and 0xFF)
+        }
+        return result.toShort()
+    }
+
+    override fun encode(output: OutputTarget, value: Short) {
+        for (i in 1 downTo 0) {
+            output.write(((value.toInt() shr (i * 8)) and 0xFF).toByte())
+        }
+    }
+}
+
+object LongCodec : Codec<Long> {
+    override fun decode(input: InputSource): Long {
+        var result = 0L
+        for (i in 0 until 8) {
+            result = (result shl 8) or (input.next().toLong() and 0xFF)
+        }
+        return result
+    }
+
+    override fun encode(output: OutputTarget, value: Long) {
+        for (i in 7 downTo 0) {
+            output.write(((value shr (i * 8)) and 0xFF).toByte())
+        }
+    }
+}
+
+object CharCodec : Codec<Char> {
+    override fun decode(input: InputSource): Char {
+        var result = 0
+        for (i in 0 until 2) {
+            result = (result shl 8) or (input.next().toInt() and 0xFF)
+        }
+        return result.toChar()
+    }
+
+    override fun encode(output: OutputTarget, value: Char) {
+        for (i in 1 downTo 0) {
+            output.write(((value.code shr (i * 8)) and 0xFF).toByte())
+        }
+    }
+}
+
+object BooleanCodec : Codec<Boolean> {
+    override fun decode(input: InputSource): Boolean {
+        return input.next().toInt() != 0
+    }
+
+    override fun encode(output: OutputTarget, value: Boolean) {
+        output.write(if (value) 1.toByte() else 0.toByte())
+    }
+}
+
+object FloatCodec : Codec<Float> {
+    override fun decode(input: InputSource): Float {
+        val intBits = IntCodec.decode(input)
+        return Float.fromBits(intBits)
+    }
+
+    override fun encode(output: OutputTarget, value: Float) {
+        val intBits = value.toBits()
+        IntCodec.encode(output, intBits)
+    }
+}
+
+object DoubleCodec : Codec<Double> {
+    override fun decode(input: InputSource): Double {
+        val longBits = LongCodec.decode(input)
+        return Double.fromBits(longBits)
+    }
+
+    override fun encode(output: OutputTarget, value: Double) {
+        val longBits = value.toBits()
+        LongCodec.encode(output, longBits)
+    }
+}
+
+class UIntCodec : Codec<UInt> {
+    override fun decode(input: InputSource): UInt {
+        return IntCodec.decode(input).toUInt()
+    }
+
+    override fun encode(output: OutputTarget, value: UInt) {
+        IntCodec.encode(output, value.toInt())
+    }
+}
+
+class ULongCodec : Codec<ULong> {
+    override fun decode(input: InputSource): ULong {
+        return LongCodec.decode(input).toULong()
+    }
+
+    override fun encode(output: OutputTarget, value: ULong) {
+        LongCodec.encode(output, value.toLong())
+    }
+}
+
+class UByteCodec : Codec<UByte> {
+    override fun decode(input: InputSource): UByte {
+        return ByteCodec.decode(input).toUByte()
+    }
+
+    override fun encode(output: OutputTarget, value: UByte) {
+        ByteCodec.encode(output, value.toByte())
+    }
+}
+
+class UShortCodec : Codec<UShort> {
+    override fun decode(input: InputSource): UShort {
+        return ShortCodec.decode(input).toUShort()
+    }
+
+    override fun encode(output: OutputTarget, value: UShort) {
+        ShortCodec.encode(output, value.toShort())
+    }
+}
+
+object UnitCodec : Codec<Unit> {
+    override fun decode(input: InputSource) {}
+    override fun encode(output: OutputTarget, value: Unit) {}
+}
+
+object ByteArrayCodec : Codec<ByteArray> {
+    override fun decode(input: InputSource) =
+        ByteArray(IntCodec.decode(input)) { ByteCodec.decode(input) }
+
+    override fun encode(output: OutputTarget, value: ByteArray) {
+        IntCodec.encode(output, value.size)
+        for (byte in value) {
+            ByteCodec.encode(output, byte)
+        }
+    }
+}
+
+object StringCodec : Codec<String> {
+    override fun decode(input: InputSource): String {
+        val chars = CharArray(IntCodec.decode(input)) { CharCodec.decode(input) }
+        return chars.concatToString()
+    }
+
+    override fun encode(output: OutputTarget, value: String) {
+        IntCodec.encode(output, value.length)
+        for (char in value) {
+            CharCodec.encode(output, char)
+        }
+    }
+}
+
+object LocalDateCodec : Codec<LocalDate> {
+    override fun decode(input: InputSource): LocalDate {
+        val epochDays = LongCodec.decode(input)
+        return LocalDate.fromEpochDays(epochDays)
+    }
+
+    override fun encode(output: OutputTarget, value: LocalDate) {
+        val epochDays = value.toEpochDays()
+        LongCodec.encode(output, epochDays)
+    }
+}
+
+object LocalDateRangeCodec : Codec<LocalDateRange> {
+    override fun decode(input: InputSource): LocalDateRange {
+        val start = LocalDateCodec.decode(input)
+        val endInclusive = LocalDateCodec.decode(input)
+        return LocalDateRange(start, endInclusive)
+    }
+
+    override fun encode(output: OutputTarget, value: LocalDateRange) {
+        LocalDateCodec.encode(output, value.start)
+        LocalDateCodec.encode(output, value.endInclusive)
+    }
+}
+
+object LocalTimeCodec : Codec<LocalTime> {
+    override fun decode(input: InputSource): LocalTime {
+        val nanosecondsSinceMidnight = LongCodec.decode(input)
+        return LocalTime.fromNanosecondOfDay(nanosecondsSinceMidnight)
+    }
+
+    override fun encode(output: OutputTarget, value: LocalTime) {
+        val nanosecondsSinceMidnight = value.toNanosecondOfDay()
+        LongCodec.encode(output, nanosecondsSinceMidnight)
+    }
+}
+
+object LocalDateTimeCodec : Codec<LocalDateTime> {
+    override fun decode(input: InputSource): LocalDateTime {
+        val date = LocalDateCodec.decode(input)
+        val time = LocalTimeCodec.decode(input)
+        return LocalDateTime(date, time)
+    }
+
+    override fun encode(output: OutputTarget, value: LocalDateTime) {
+        LocalDateCodec.encode(output, value.date)
+        LocalTimeCodec.encode(output, value.time)
+    }
+}
+
+@OptIn(ExperimentalTime::class)
+object InstantCodec : Codec<Instant> {
+    override fun decode(input: InputSource): Instant {
+        val epochNanoseconds = LongCodec.decode(input)
+        return Instant.fromEpochMilliseconds(epochNanoseconds)
+    }
+
+    override fun encode(output: OutputTarget, value: Instant) {
+        val epochNanoseconds = value.toEpochMilliseconds()
+        LongCodec.encode(output, epochNanoseconds)
+    }
+}
+
+object DurationCodec : Codec<Duration> {
+    override fun decode(input: InputSource): Duration {
+        val longBits = LongCodec.decode(input)
+        return longBits.toDuration(DurationUnit.NANOSECONDS)
+    }
+
+    override fun encode(output: OutputTarget, value: Duration) {
+        val longBits = value.inWholeNanoseconds
+        LongCodec.encode(output, longBits)
+    }
+}
+
+@OptIn(ExperimentalUuidApi::class)
+object UuidCodec : Codec<Uuid> {
+    override fun decode(input: InputSource): Uuid {
+        val mostSigBits = LongCodec.decode(input)
+        val leastSigBits = LongCodec.decode(input)
+        return Uuid.fromLongs(mostSigBits, leastSigBits)
+    }
+
+    override fun encode(output: OutputTarget, value: Uuid) {
+        val (mostSigBits, leastSigBits) = value.toULongs(::Pair)
+        LongCodec.encode(output, mostSigBits.toLong())
+        LongCodec.encode(output, leastSigBits.toLong())
+    }
+}
+
+
+object IntRangeCodec : Codec<IntRange> {
+    override fun decode(input: InputSource): IntRange {
+        val start = IntCodec.decode(input)
+        val endInclusive = IntCodec.decode(input)
+        return IntRange(start, endInclusive)
+    }
+
+    override fun encode(output: OutputTarget, value: IntRange) {
+        IntCodec.encode(output, value.first)
+        IntCodec.encode(output, value.last)
+    }
+}
+
+object IntProgressionCodec : Codec<IntProgression> {
+    override fun decode(input: InputSource): IntProgression {
+        val start = IntCodec.decode(input)
+        val endInclusive = IntCodec.decode(input)
+        val step = IntCodec.decode(input)
+        return IntProgression.fromClosedRange(start, endInclusive, step)
+    }
+
+    override fun encode(output: OutputTarget, value: IntProgression) {
+        IntCodec.encode(output, value.first)
+        IntCodec.encode(output, value.last)
+        IntCodec.encode(output, value.step)
+    }
+}
+
+object LongRangeCodec : Codec<LongRange> {
+    override fun decode(input: InputSource): LongRange {
+        val start = LongCodec.decode(input)
+        val endInclusive = LongCodec.decode(input)
+        return LongRange(start, endInclusive)
+    }
+
+    override fun encode(output: OutputTarget, value: LongRange) {
+        LongCodec.encode(output, value.first)
+        LongCodec.encode(output, value.last)
+    }
+}
+
+object LongProgressionCodec : Codec<LongProgression> {
+    override fun decode(input: InputSource): LongProgression {
+        val start = LongCodec.decode(input)
+        val endInclusive = LongCodec.decode(input)
+        val step = LongCodec.decode(input)
+        return LongProgression.fromClosedRange(start, endInclusive, step)
+    }
+
+    override fun encode(output: OutputTarget, value: LongProgression) {
+        LongCodec.encode(output, value.first)
+        LongCodec.encode(output, value.last)
+        LongCodec.encode(output, value.step)
+    }
+}
+
+object CharRangeCodec : Codec<CharRange> {
+    override fun decode(input: InputSource): CharRange {
+        val start = CharCodec.decode(input)
+        val endInclusive = CharCodec.decode(input)
+        return CharRange(start, endInclusive)
+    }
+
+    override fun encode(output: OutputTarget, value: CharRange) {
+        CharCodec.encode(output, value.first)
+        CharCodec.encode(output, value.last)
+    }
+}
+
+object CharProgressionCodec : Codec<CharProgression> {
+    override fun decode(input: InputSource): CharProgression {
+        val start = CharCodec.decode(input)
+        val endInclusive = CharCodec.decode(input)
+        val step = IntCodec.decode(input)
+        return CharProgression.fromClosedRange(start, endInclusive, step)
+    }
+
+    override fun encode(output: OutputTarget, value: CharProgression) {
+        CharCodec.encode(output, value.first)
+        CharCodec.encode(output, value.last)
+        IntCodec.encode(output, value.step)
+    }
+}
+
+object UIntRangeCodec : Codec<UIntRange> {
+    override fun decode(input: InputSource): UIntRange {
+        val start = UIntCodec().decode(input)
+        val endInclusive = UIntCodec().decode(input)
+        return UIntRange(start, endInclusive)
+    }
+
+    override fun encode(output: OutputTarget, value: UIntRange) {
+        UIntCodec().encode(output, value.first)
+        UIntCodec().encode(output, value.last)
+    }
+}
+
+object UIntProgressionCodec : Codec<UIntProgression> {
+    override fun decode(input: InputSource): UIntProgression {
+        val start = UIntCodec().decode(input)
+        val endInclusive = UIntCodec().decode(input)
+        val step = IntCodec.decode(input)
+        return UIntProgression.fromClosedRange(start, endInclusive, step)
+    }
+
+    override fun encode(output: OutputTarget, value: UIntProgression) {
+        UIntCodec().encode(output, value.first)
+        UIntCodec().encode(output, value.last)
+        IntCodec.encode(output, value.step)
+    }
+}
+
+object ULongRangeCodec : Codec<ULongRange> {
+    override fun decode(input: InputSource): ULongRange {
+        val start = ULongCodec().decode(input)
+        val endInclusive = ULongCodec().decode(input)
+        return ULongRange(start, endInclusive)
+    }
+
+    override fun encode(output: OutputTarget, value: ULongRange) {
+        ULongCodec().encode(output, value.first)
+        ULongCodec().encode(output, value.last)
+    }
+}
+
+object ULongProgressionCodec : Codec<ULongProgression> {
+    override fun decode(input: InputSource): ULongProgression {
+        val start = ULongCodec().decode(input)
+        val endInclusive = ULongCodec().decode(input)
+        val step = LongCodec.decode(input)
+        return ULongProgression.fromClosedRange(start, endInclusive, step)
+    }
+
+    override fun encode(output: OutputTarget, value: ULongProgression) {
+        ULongCodec().encode(output, value.first)
+        ULongCodec().encode(output, value.last)
+        LongCodec.encode(output, value.step)
+    }
+}
+
+private class ClosedRangeCodec<T : Comparable<T>>(val codec: Codec<T>) : Codec<ClosedRange<T>> {
+    override fun decode(input: InputSource): ClosedRange<T> {
+        val start = codec.decode(input)
+        val endInclusive = codec.decode(input)
+        return start.rangeTo(endInclusive)
+    }
+
+    override fun encode(output: OutputTarget, value: ClosedRange<T>) {
+        codec.encode(output, value.start)
+        codec.encode(output, value.endInclusive)
+    }
+}
+
+fun <T : Comparable<T>> Codec<T>.closedRange(): Codec<ClosedRange<T>> =
+    ClosedRangeCodec(this)
+
+private class OpenEndRangeCodec<T : Comparable<T>>(val codec: Codec<T>) : Codec<OpenEndRange<T>> {
+    override fun decode(input: InputSource): OpenEndRange<T> {
+        val start = codec.decode(input)
+        val endExclusive = codec.decode(input)
+        return start.rangeUntil(endExclusive)
+    }
+
+    override fun encode(output: OutputTarget, value: OpenEndRange<T>) {
+        codec.encode(output, value.start)
+        codec.encode(output, value.endExclusive)
+    }
+}
+
+fun <T : Comparable<T>> Codec<T>.openEndRange(): Codec<OpenEndRange<T>> =
+    OpenEndRangeCodec(this)
 
 private class PairCodec<A, B>(
     private val firstCodec: Codec<A>,

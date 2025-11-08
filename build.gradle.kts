@@ -4,17 +4,29 @@ import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    kotlin("multiplatform") version "2.2.20"
-    id("com.vanniktech.maven.publish") version "0.34.0"
+    alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.maven.publish)
 }
 
 group = "starry.codec"
 version = "1.0.0"
 
 kotlin {
+    mingwX64()
+    linuxX64()
+    linuxArm64()
+    iosX64()
+    iosArm64()
+
+    js {
+        browser()
+        nodejs()
+    }
+
     wasmJs {
         browser()
         nodejs()
+        d8()
     }
 
     jvm {
@@ -25,11 +37,11 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation("io.arrow-kt:arrow-core:2.2.0-beta.11")
-            implementation(kotlin("reflect"))
+            api(libs.arrow.core)
+            api(libs.bundles.kotlinx.ecosystem)
+            api(kotlin("reflect"))
         }
-        commonTest.dependencies {
-            implementation(kotlin("test"))
-        }
+
+        commonTest.dependencies { api(kotlin("test")) }
     }
 }
