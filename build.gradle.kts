@@ -37,11 +37,13 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            api(libs.arrow.core)
-            api(libs.bundles.kotlinx.ecosystem)
+            compileOnly(libs.arrow.core)
+            compileOnly(libs.bundles.kotlinx.ecosystem)
             api(kotlin("reflect"))
         }
 
-        commonTest.dependencies { api(kotlin("test")) }
+        commonTest.dependencies {
+            api(kotlin("test"))
+        }
     }
 }

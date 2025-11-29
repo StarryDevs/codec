@@ -41,3 +41,43 @@ fun OutputTarget.Companion.wrap(target: ByteBuffer): OutputTarget {
         override fun close() {}
     }
 }
+
+private class SourceInputStream(private val source: InputSource) : InputStream() {
+    override fun read(): Int {
+        return if (source.available() > 0) {
+            source.next().toInt() and 0xFF
+        } else {
+            -1
+        }
+    }
+
+    override fun available(): Int {
+        return source.available()
+    }
+
+    override fun close() {
+        source.close()
+    }
+
+    override fun skip(n: Long): Long {
+        return source.skip(n)
+    }
+}
+
+fun InputSource.asInputStream(): InputStream {
+    return SourceInputStream(this)
+}
+
+private class TargetOutputStream(private val target: OutputTarget) : OutputStream() {
+    override fun write(b: Int) {
+        target.write(b.toByte())
+    }
+
+    override fun close() {
+        target.close()
+    }
+}
+
+fun OutputTarget.asOutputStream(): OutputStream {
+    return TargetOutputStream(this)
+}

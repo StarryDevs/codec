@@ -1,8 +1,9 @@
 package starry.codec
 
-class ArrayOutputTarget internal constructor(private var array: ByteArray = byteArrayOf(), offset: Int = 0) : OutputTarget {
+class ArrayOutputTarget internal constructor(private var array: ByteArray = byteArrayOf(), offset: Int = 0) :
+    OutputTarget {
 
-    private var closed: Boolean = true
+    private var closed: Boolean = false
     private var position: Int = offset
 
     override fun write(byte: Byte) {

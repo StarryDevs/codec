@@ -2,6 +2,7 @@ package starry.codec.integration.arrow
 
 import arrow.core.Ior
 import starry.codec.Codec
+import starry.codec.InputSource
 import starry.codec.OutputTarget
 
 class IorCodec<A, B>(val leftCodec: Codec<A>, val rightCodec: Codec<B>) : Codec<Ior<A, B>> {
@@ -12,10 +13,12 @@ class IorCodec<A, B>(val leftCodec: Codec<A>, val rightCodec: Codec<B>) : Codec<
                 output.write(0)
                 leftCodec.encode(output, value.value)
             }
+
             is Ior.Right -> {
                 output.write(1)
                 rightCodec.encode(output, value.value)
             }
+
             is Ior.Both -> {
                 output.write(2)
                 leftCodec.encode(output, value.leftValue)
@@ -24,7 +27,7 @@ class IorCodec<A, B>(val leftCodec: Codec<A>, val rightCodec: Codec<B>) : Codec<
         }
     }
 
-    override fun decode(input: starry.codec.InputSource): Ior<A, B> {
+    override fun decode(input: InputSource): Ior<A, B> {
         return when (input.next().toInt()) {
             0 -> Ior.Left(leftCodec.decode(input))
             1 -> Ior.Right(rightCodec.decode(input))

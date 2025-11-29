@@ -26,7 +26,7 @@ private class CompositeCodec<T>(private val compositeCodecDsl: CompositeCodecDsl
         for (dependency in compositeCodecDsl.dependencies) {
             val outputValue = compositeCodecDsl.outputValues[dependency]
             if (outputValue == null) {
-                if (dependency.codec is DefaultCodec<*>) {
+                if (dependency.codec is DefaultEncoder) {
                     dependency.codec.encodeDefault(output)
                 } else {
                     throw IllegalStateException("Output value for dependency $dependency is null")
@@ -56,6 +56,7 @@ private class CompositeCodecDslImpl<T> : CompositeCodecDsl<T> {
         @Suppress("UNCHECKED_CAST")
         override operator fun getValue(thisRef: Any?, property: kotlin.reflect.KProperty<*>): K =
             inputValues[this] as K
+
         override operator fun setValue(thisRef: Any?, property: kotlin.reflect.KProperty<*>, value: K) {
             outputValues[this] = value
         }
@@ -67,8 +68,8 @@ private class CompositeCodecDslImpl<T> : CompositeCodecDsl<T> {
     var inputValues: Map<CompositeCodecDsl.Dependency<*>, Any?> = emptyMap()
     var outputValues: MutableMap<CompositeCodecDsl.Dependency<*>, Any?> = mutableMapOf()
 
-    lateinit var output: () -> T
-    lateinit var input: (T) -> Unit
+    var output: () -> T = { throw NotImplementedError() }
+    var input: (T) -> Unit = {  }
 
     override fun output(block: () -> T) {
         output = block

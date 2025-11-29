@@ -17,13 +17,12 @@ class CodecTest {
     @Test
     fun testString() {
         val codec = StringCodec
-        val original = "Hello, world!"
+        val text = "Hello, world!"
         val target = OutputTarget.dynamic()
-        codec.encode(target, original)
-        println(target.toByteArray().contentToString())
+        codec.encode(target, text)
         val source = InputSource.wrap(target.toByteArray())
         val result = codec.decode(source)
-        assertEquals(original, result)
+        assertEquals(text, result)
     }
 
 }

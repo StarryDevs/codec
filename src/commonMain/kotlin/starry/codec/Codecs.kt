@@ -5,16 +5,34 @@ import kotlinx.datetime.LocalDateRange
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import kotlin.enums.enumEntries
-import kotlin.time.Duration
-import kotlin.time.DurationUnit
-import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
-import kotlin.time.toDuration
+import kotlin.time.*
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
+private class EncoderDecoderCodec<T>(
+    private val encoder: Encoder<T>,
+    private val decoder: Decoder<T>
+) : Codec<T> {
+    override fun decode(input: InputSource): T = decoder.decode(input)
+    override fun encode(output: OutputTarget, value: T) = encoder.encode(output, value)
+}
 
-object IntCodec : Codec<Int> {
+/**
+ * 将 [Encoder] 和 [Decoder] 组合成 [Codec]
+ */
+infix fun <T> Encoder<T>.with(decoder: Decoder<T>): Codec<T> = EncoderDecoderCodec(this, decoder)
+
+/**
+ * 将 [Decoder] 和 [Encoder] 组合成 [Codec]
+ */
+infix fun <T> Decoder<T>.with(encoder: Encoder<T>): Codec<T> = EncoderDecoderCodec(encoder, this)
+
+/**
+ * [Int] 编解码器
+ */
+object IntCodec : Codec<Int>, DefaultEncoder {
+    override fun encodeDefault(output: OutputTarget) = encode(output, 0)
+
     override fun decode(input: InputSource): Int {
         var result = 0
         for (i in 0 until 4) {
@@ -30,7 +48,12 @@ object IntCodec : Codec<Int> {
     }
 }
 
-object ByteCodec : Codec<Byte> {
+/**
+ * [Byte] 编解码器
+ */
+object ByteCodec : Codec<Byte>, DefaultEncoder {
+    override fun encodeDefault(output: OutputTarget) = encode(output, 0)
+
     override fun decode(input: InputSource): Byte {
         return input.next()
     }
@@ -40,7 +63,12 @@ object ByteCodec : Codec<Byte> {
     }
 }
 
-object ShortCodec : Codec<Short> {
+/**
+ * [Short] 编解码器
+ */
+object ShortCodec : Codec<Short>, DefaultEncoder {
+    override fun encodeDefault(output: OutputTarget) = encode(output, 0)
+
     override fun decode(input: InputSource): Short {
         var result = 0
         for (i in 0 until 2) {
@@ -56,7 +84,12 @@ object ShortCodec : Codec<Short> {
     }
 }
 
-object LongCodec : Codec<Long> {
+/**
+ * [Long] 编解码器
+ */
+object LongCodec : Codec<Long>, DefaultEncoder {
+    override fun encodeDefault(output: OutputTarget) = encode(output, 0)
+
     override fun decode(input: InputSource): Long {
         var result = 0L
         for (i in 0 until 8) {
@@ -72,7 +105,12 @@ object LongCodec : Codec<Long> {
     }
 }
 
-object CharCodec : Codec<Char> {
+/**
+ * [Char] 编解码器
+ */
+object CharCodec : Codec<Char>, DefaultEncoder {
+    override fun encodeDefault(output: OutputTarget) = encode(output, 0.toChar())
+
     override fun decode(input: InputSource): Char {
         var result = 0
         for (i in 0 until 2) {
@@ -88,7 +126,12 @@ object CharCodec : Codec<Char> {
     }
 }
 
-object BooleanCodec : Codec<Boolean> {
+/**
+ * [Boolean] 编解码器
+ */
+object BooleanCodec : Codec<Boolean>, DefaultEncoder {
+    override fun encodeDefault(output: OutputTarget) = encode(output, false)
+
     override fun decode(input: InputSource): Boolean {
         return input.next().toInt() != 0
     }
@@ -98,7 +141,12 @@ object BooleanCodec : Codec<Boolean> {
     }
 }
 
-object FloatCodec : Codec<Float> {
+/**
+ * [Float] 编解码器
+ */
+object FloatCodec : Codec<Float>, DefaultEncoder {
+    override fun encodeDefault(output: OutputTarget) = encode(output, 0F)
+
     override fun decode(input: InputSource): Float {
         val intBits = IntCodec.decode(input)
         return Float.fromBits(intBits)
@@ -110,7 +158,12 @@ object FloatCodec : Codec<Float> {
     }
 }
 
-object DoubleCodec : Codec<Double> {
+/**
+ * [Double] 编解码器
+ */
+object DoubleCodec : Codec<Double>, DefaultEncoder {
+    override fun encodeDefault(output: OutputTarget) = encode(output, 0.0)
+
     override fun decode(input: InputSource): Double {
         val longBits = LongCodec.decode(input)
         return Double.fromBits(longBits)
@@ -122,7 +175,12 @@ object DoubleCodec : Codec<Double> {
     }
 }
 
-class UIntCodec : Codec<UInt> {
+/**
+ * [UInt] 编解码器
+ */
+object UIntCodec : Codec<UInt>, DefaultEncoder {
+    override fun encodeDefault(output: OutputTarget) = encode(output, 0.toUInt())
+
     override fun decode(input: InputSource): UInt {
         return IntCodec.decode(input).toUInt()
     }
@@ -132,7 +190,12 @@ class UIntCodec : Codec<UInt> {
     }
 }
 
-class ULongCodec : Codec<ULong> {
+/**
+ * [ULong] 编解码器
+ */
+object ULongCodec : Codec<ULong>, DefaultEncoder {
+    override fun encodeDefault(output: OutputTarget) = encode(output, 0.toULong())
+
     override fun decode(input: InputSource): ULong {
         return LongCodec.decode(input).toULong()
     }
@@ -142,7 +205,12 @@ class ULongCodec : Codec<ULong> {
     }
 }
 
-class UByteCodec : Codec<UByte> {
+/**
+ * [UByte] 编解码器
+ */
+object UByteCodec : Codec<UByte>, DefaultEncoder {
+    override fun encodeDefault(output: OutputTarget) = encode(output, 0.toUByte())
+
     override fun decode(input: InputSource): UByte {
         return ByteCodec.decode(input).toUByte()
     }
@@ -152,7 +220,12 @@ class UByteCodec : Codec<UByte> {
     }
 }
 
-class UShortCodec : Codec<UShort> {
+/**
+ * [UShort] 编解码器
+ */
+object UShortCodec : Codec<UShort>, DefaultEncoder {
+    override fun encodeDefault(output: OutputTarget) = encode(output, 0.toUShort())
+
     override fun decode(input: InputSource): UShort {
         return ShortCodec.decode(input).toUShort()
     }
@@ -162,12 +235,21 @@ class UShortCodec : Codec<UShort> {
     }
 }
 
-object UnitCodec : Codec<Unit> {
+/**
+ * [Unit] 编解码器
+ */
+object UnitCodec : Codec<Unit>, DefaultEncoder {
+    override fun encodeDefault(output: OutputTarget) = encode(output, Unit)
     override fun decode(input: InputSource) {}
     override fun encode(output: OutputTarget, value: Unit) {}
 }
 
-object ByteArrayCodec : Codec<ByteArray> {
+/**
+ * [ByteArray] 编解码器
+ */
+object ByteArrayCodec : Codec<ByteArray>, DefaultEncoder {
+    override fun encodeDefault(output: OutputTarget) = encode(output, ByteArray(0))
+
     override fun decode(input: InputSource) =
         ByteArray(IntCodec.decode(input)) { ByteCodec.decode(input) }
 
@@ -179,7 +261,11 @@ object ByteArrayCodec : Codec<ByteArray> {
     }
 }
 
-object StringCodec : Codec<String> {
+/**
+ * [String] 编解码器
+ */
+object StringCodec : Codec<String>, DefaultEncoder {
+    override fun encodeDefault(output: OutputTarget) = encode(output, "")
     override fun decode(input: InputSource): String {
         val chars = CharArray(IntCodec.decode(input)) { CharCodec.decode(input) }
         return chars.concatToString()
@@ -193,6 +279,9 @@ object StringCodec : Codec<String> {
     }
 }
 
+/**
+ * [LocalDate] 编解码器
+ */
 object LocalDateCodec : Codec<LocalDate> {
     override fun decode(input: InputSource): LocalDate {
         val epochDays = LongCodec.decode(input)
@@ -205,6 +294,9 @@ object LocalDateCodec : Codec<LocalDate> {
     }
 }
 
+/**
+ * [LocalDateRange] 编解码器
+ */
 object LocalDateRangeCodec : Codec<LocalDateRange> {
     override fun decode(input: InputSource): LocalDateRange {
         val start = LocalDateCodec.decode(input)
@@ -218,6 +310,9 @@ object LocalDateRangeCodec : Codec<LocalDateRange> {
     }
 }
 
+/**
+ * [LocalTime] 编解码器
+ */
 object LocalTimeCodec : Codec<LocalTime> {
     override fun decode(input: InputSource): LocalTime {
         val nanosecondsSinceMidnight = LongCodec.decode(input)
@@ -230,6 +325,9 @@ object LocalTimeCodec : Codec<LocalTime> {
     }
 }
 
+/**
+ * [LocalDateTime] 编解码器
+ */
 object LocalDateTimeCodec : Codec<LocalDateTime> {
     override fun decode(input: InputSource): LocalDateTime {
         val date = LocalDateCodec.decode(input)
@@ -243,6 +341,9 @@ object LocalDateTimeCodec : Codec<LocalDateTime> {
     }
 }
 
+/**
+ * [Instant] 编解码器
+ */
 @OptIn(ExperimentalTime::class)
 object InstantCodec : Codec<Instant> {
     override fun decode(input: InputSource): Instant {
@@ -256,6 +357,9 @@ object InstantCodec : Codec<Instant> {
     }
 }
 
+/**
+ * [Duration] 编解码器
+ */
 object DurationCodec : Codec<Duration> {
     override fun decode(input: InputSource): Duration {
         val longBits = LongCodec.decode(input)
@@ -268,6 +372,9 @@ object DurationCodec : Codec<Duration> {
     }
 }
 
+/**
+ * [Uuid] 编解码器
+ */
 @OptIn(ExperimentalUuidApi::class)
 object UuidCodec : Codec<Uuid> {
     override fun decode(input: InputSource): Uuid {
@@ -283,7 +390,9 @@ object UuidCodec : Codec<Uuid> {
     }
 }
 
-
+/**
+ * [IntRange] 编解码器
+ */
 object IntRangeCodec : Codec<IntRange> {
     override fun decode(input: InputSource): IntRange {
         val start = IntCodec.decode(input)
@@ -297,6 +406,9 @@ object IntRangeCodec : Codec<IntRange> {
     }
 }
 
+/**
+ * [IntProgression] 编解码器
+ */
 object IntProgressionCodec : Codec<IntProgression> {
     override fun decode(input: InputSource): IntProgression {
         val start = IntCodec.decode(input)
@@ -312,6 +424,9 @@ object IntProgressionCodec : Codec<IntProgression> {
     }
 }
 
+/**
+ * [LongRange] 编解码器
+ */
 object LongRangeCodec : Codec<LongRange> {
     override fun decode(input: InputSource): LongRange {
         val start = LongCodec.decode(input)
@@ -325,6 +440,9 @@ object LongRangeCodec : Codec<LongRange> {
     }
 }
 
+/**
+ * [LongProgression] 编解码器
+ */
 object LongProgressionCodec : Codec<LongProgression> {
     override fun decode(input: InputSource): LongProgression {
         val start = LongCodec.decode(input)
@@ -340,6 +458,9 @@ object LongProgressionCodec : Codec<LongProgression> {
     }
 }
 
+/**
+ * [CharRange] 编解码器
+ */
 object CharRangeCodec : Codec<CharRange> {
     override fun decode(input: InputSource): CharRange {
         val start = CharCodec.decode(input)
@@ -353,6 +474,9 @@ object CharRangeCodec : Codec<CharRange> {
     }
 }
 
+/**
+ * [CharProgression] 编解码器
+ */
 object CharProgressionCodec : Codec<CharProgression> {
     override fun decode(input: InputSource): CharProgression {
         val start = CharCodec.decode(input)
@@ -368,58 +492,70 @@ object CharProgressionCodec : Codec<CharProgression> {
     }
 }
 
+/**
+ * [UIntRange] 编解码器
+ */
 object UIntRangeCodec : Codec<UIntRange> {
     override fun decode(input: InputSource): UIntRange {
-        val start = UIntCodec().decode(input)
-        val endInclusive = UIntCodec().decode(input)
+        val start = UIntCodec.decode(input)
+        val endInclusive = UIntCodec.decode(input)
         return UIntRange(start, endInclusive)
     }
 
     override fun encode(output: OutputTarget, value: UIntRange) {
-        UIntCodec().encode(output, value.first)
-        UIntCodec().encode(output, value.last)
+        UIntCodec.encode(output, value.first)
+        UIntCodec.encode(output, value.last)
     }
 }
 
+/**
+ * [UIntProgression] 编解码器
+ */
 object UIntProgressionCodec : Codec<UIntProgression> {
     override fun decode(input: InputSource): UIntProgression {
-        val start = UIntCodec().decode(input)
-        val endInclusive = UIntCodec().decode(input)
+        val start = UIntCodec.decode(input)
+        val endInclusive = UIntCodec.decode(input)
         val step = IntCodec.decode(input)
         return UIntProgression.fromClosedRange(start, endInclusive, step)
     }
 
     override fun encode(output: OutputTarget, value: UIntProgression) {
-        UIntCodec().encode(output, value.first)
-        UIntCodec().encode(output, value.last)
+        UIntCodec.encode(output, value.first)
+        UIntCodec.encode(output, value.last)
         IntCodec.encode(output, value.step)
     }
 }
 
+/**
+ * [ULongRange] 编解码器
+ */
 object ULongRangeCodec : Codec<ULongRange> {
     override fun decode(input: InputSource): ULongRange {
-        val start = ULongCodec().decode(input)
-        val endInclusive = ULongCodec().decode(input)
+        val start = ULongCodec.decode(input)
+        val endInclusive = ULongCodec.decode(input)
         return ULongRange(start, endInclusive)
     }
 
     override fun encode(output: OutputTarget, value: ULongRange) {
-        ULongCodec().encode(output, value.first)
-        ULongCodec().encode(output, value.last)
+        ULongCodec.encode(output, value.first)
+        ULongCodec.encode(output, value.last)
     }
 }
 
+/**
+ * [ULongProgression] 编解码器
+ */
 object ULongProgressionCodec : Codec<ULongProgression> {
     override fun decode(input: InputSource): ULongProgression {
-        val start = ULongCodec().decode(input)
-        val endInclusive = ULongCodec().decode(input)
+        val start = ULongCodec.decode(input)
+        val endInclusive = ULongCodec.decode(input)
         val step = LongCodec.decode(input)
         return ULongProgression.fromClosedRange(start, endInclusive, step)
     }
 
     override fun encode(output: OutputTarget, value: ULongProgression) {
-        ULongCodec().encode(output, value.first)
-        ULongCodec().encode(output, value.last)
+        ULongCodec.encode(output, value.first)
+        ULongCodec.encode(output, value.last)
         LongCodec.encode(output, value.step)
     }
 }
@@ -437,6 +573,9 @@ private class ClosedRangeCodec<T : Comparable<T>>(val codec: Codec<T>) : Codec<C
     }
 }
 
+/**
+ * [ClosedRange] 编解码器
+ */
 fun <T : Comparable<T>> Codec<T>.closedRange(): Codec<ClosedRange<T>> =
     ClosedRangeCodec(this)
 
@@ -453,6 +592,9 @@ private class OpenEndRangeCodec<T : Comparable<T>>(val codec: Codec<T>) : Codec<
     }
 }
 
+/**
+ * [OpenEndRange] 编解码器
+ */
 fun <T : Comparable<T>> Codec<T>.openEndRange(): Codec<OpenEndRange<T>> =
     OpenEndRangeCodec(this)
 
@@ -472,6 +614,9 @@ private class PairCodec<A, B>(
     }
 }
 
+/**
+ * [Pair] 编解码器
+ */
 infix fun <A, B> Codec<A>.with(other: Codec<B>): Codec<Pair<A, B>> =
     PairCodec(this, other)
 
@@ -495,6 +640,9 @@ private class NullableCodec<T>(private val codec: Codec<T>) : Codec<T?> {
     }
 }
 
+/**
+ * 可空类型编解码器
+ */
 fun <T> Codec<T>.nullable(): Codec<T?> = NullableCodec(this)
 
 private class ListCodec<T>(private val elementCodec: Codec<T>) : Codec<List<T>> {
@@ -515,7 +663,15 @@ private class ListCodec<T>(private val elementCodec: Codec<T>) : Codec<List<T>> 
     }
 }
 
+/**
+ * [List] 编解码器
+ */
 fun <T> Codec<T>.list(): Codec<List<T>> = ListCodec(this)
+
+/**
+ * [Set] 编解码器
+ */
+fun <T> Codec<T>.set(): Codec<Set<T>> = list().map({ it.toSet() }, { it.toList() })
 
 private class CollectionCodec<T>(private val elementCodec: Codec<T>, private val size: Int) : Codec<Collection<T>> {
 
@@ -535,6 +691,9 @@ private class CollectionCodec<T>(private val elementCodec: Codec<T>, private val
 
 }
 
+/**
+ * 固定大小的 [Collection] 编解码器
+ */
 fun <T> Codec<T>.collection(size: Int): Codec<Collection<T>> = CollectionCodec(this, size)
 
 private class MapCodec<K, V>(private val keyCodec: Codec<K>, private val valueCodec: Codec<V>) : Codec<Map<K, V>> {
@@ -558,6 +717,9 @@ private class MapCodec<K, V>(private val keyCodec: Codec<K>, private val valueCo
     }
 }
 
+/**
+ * [Map] 编解码器
+ */
 infix fun <K, V> Codec<K>.associate(valueCodec: Codec<V>): Codec<Map<K, V>> = MapCodec(this, valueCodec)
 
 private class MappingCodec<I, O>(
@@ -576,45 +738,100 @@ private class MappingCodec<I, O>(
     }
 }
 
+/**
+ * 映射编解码器
+ */
 fun <I, O> Codec<I>.map(toOutput: (I) -> O, fromOutput: (O) -> I): Codec<O> =
     MappingCodec(this, toOutput, fromOutput)
 
-class NoopCodec(val size: Int) : Codec<Unit>, DefaultCodec<Unit> {
+/**
+ * 无操作编解码器
+ */
+class NoopCodec(val size: Int = 0) : Codec<Unit> {
+    companion object : Codec<Unit> by NoopCodec(0)
+
     override fun decode(input: InputSource) {
         repeat(size) {
             input.next()
         }
+
     }
 
-    override fun encodeDefault(output: OutputTarget) {
+    override fun encode(output: OutputTarget, value: Unit) {
         repeat(size) {
             output.write(0.toByte())
         }
     }
-
-    override fun encode(output: OutputTarget, value: Unit) = encodeDefault(output)
 }
 
 private class UnionCodec<T>(list: List<T>) : Codec<T> {
+    private val indexCodec: Codec<Int> = object : Codec<Int> {
+        private val maxIndex = (list.size - 1).coerceAtLeast(0)
+        private val bytes: Int = when {
+            maxIndex == 0 -> 0
+            maxIndex <= 0xFF -> 1
+            maxIndex <= 0xFFFF -> 2
+            maxIndex <= 0xFFFFFF -> 3
+            else -> 4
+        }
+
+        override fun decode(input: InputSource): Int {
+            var result = 0
+            repeat(bytes) {
+                result = (result shl 8) or (input.next().toInt() and 0xFF)
+            }
+            return result
+        }
+
+        override fun encode(output: OutputTarget, value: Int) {
+            if (value < 0 || value > maxIndex) {
+                throw IllegalArgumentException("Index $value out of range 0..$maxIndex")
+            }
+            for (i in bytes - 1 downTo 0) {
+                output.write(((value shr (i * 8)) and 0xFF).toByte())
+            }
+        }
+    }
+
     private val valueToIndex: Map<T, Int> = list.withIndex().associate { it.value to it.index }
     private val indexToValue: Map<Int, T> = list.withIndex().associate { it.index to it.value }
 
+    @Suppress("USELESS_CAST")
     override fun encode(output: OutputTarget, value: T) {
         val index = valueToIndex[value]
             ?: throw IllegalArgumentException("Value $value is not in the union")
-        IntCodec.encode(output, index)
+        indexCodec.encode(output, index)
     }
 
     override fun decode(input: InputSource): T {
-        val index = IntCodec.decode(input)
+        val index = indexCodec.decode(input)
         return indexToValue[index]
             ?: throw IllegalArgumentException("Index $index is not in the union")
     }
 }
 
+/**
+ * 联合编解码器
+ */
 @Suppress("FunctionName")
-fun <T> UnionCodec(vararg items: T): Codec<T> = UnionCodec(items.toList())
+fun <T> UnionCodec(vararg items: T): Codec<T> {
+    if (items.isEmpty()) {
+        throw IllegalArgumentException("UnionCodec requires at least one item")
+    }
+    if (items.size == 1) {
+        val singleton = items.single()
+        return NoopCodec.map({ items[0] }) {
+            if (it != singleton) {
+                throw IllegalArgumentException("Value $it is not in the union")
+            }
+        }
+    }
+    return UnionCodec(items.toList())
+}
 
+/**
+ * 枚举编解码器
+ */
 @Suppress("FunctionName")
 inline fun <reified T : Enum<T>> EnumCodec(): Codec<T> {
     val entries = enumEntries<T>()

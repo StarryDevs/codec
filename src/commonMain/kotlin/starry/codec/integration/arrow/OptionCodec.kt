@@ -14,6 +14,7 @@ class OptionCodec<T>(val codec: Codec<T>) : Codec<Option<T>> {
                 output.write(1)
                 codec.encode(output, value.value)
             }
+
             is None -> {
                 output.write(0)
             }

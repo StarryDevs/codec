@@ -22,6 +22,7 @@ class EitherCodec<A, B>(val codecA: Codec<A>, val codecB: Codec<B>) : Codec<Eith
                 output.write(0)
                 codecA.encode(output, value.value)
             }
+
             is Either.Right -> {
                 output.write(1)
                 codecB.encode(output, value.value)

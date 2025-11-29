@@ -6,8 +6,9 @@ import starry.codec.IntCodec
 import starry.codec.OutputTarget
 import kotlin.reflect.KClass
 
-private class ArrayCodec<T>(val elementCodec: Codec<T>, val elementType: KClass<*>) : Codec<Array<T>> {
+class ArrayCodec<T>(val elementCodec: Codec<T>, val elementType: KClass<*>) : Codec<Array<T>> {
 
+    @Suppress("UNCHECKED_CAST")
     override fun decode(input: InputSource): Array<T> {
         val size = IntCodec.decode(input)
         val array = java.lang.reflect.Array.newInstance(elementType.java, size) as Array<T>
@@ -24,4 +25,8 @@ private class ArrayCodec<T>(val elementCodec: Codec<T>, val elementType: KClass<
         }
     }
 
+}
+
+inline fun <reified T> Codec<T>.array(): Codec<Array<T>> {
+    return ArrayCodec(this, T::class)
 }
